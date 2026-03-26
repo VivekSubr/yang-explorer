@@ -1,0 +1,401 @@
+/* ===== Reset ===== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ===== App Layout ===== */
+.app {
+  min-height: 100vh;
+  background: #fafafa;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.app-header {
+  background: #1b1b1b;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-content {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-brand h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #49cc90;
+}
+
+.header-subtitle {
+  font-size: 0.8rem;
+  color: #999;
+  display: block;
+}
+
+.header-link {
+  color: #61affe;
+  text-decoration: none;
+  font-size: 0.85rem;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+
+.header-link:hover { opacity: 1; }
+
+.app-main {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* ===== File Upload ===== */
+.file-upload {
+  border: 2px dashed #ccc;
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  transition: all 0.3s ease;
+  background: white;
+  cursor: pointer;
+  margin-bottom: 24px;
+}
+
+.file-upload:hover,
+.file-upload.drag-over {
+  border-color: #49cc90;
+  background: rgba(73, 204, 144, 0.04);
+}
+
+.upload-icon { font-size: 3rem; margin-bottom: 8px; }
+
+.upload-text {
+  font-size: 1.1rem;
+  color: #3b4151;
+  margin: 0 0 4px;
+}
+
+.upload-subtext {
+  color: #999;
+  margin: 4px 0 12px;
+  font-size: 0.85rem;
+}
+
+.upload-button {
+  display: inline-block;
+  background: #49cc90;
+  color: white;
+  padding: 10px 28px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 0.9rem;
+}
+
+.upload-button:hover { background: #3dba81; }
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #eee;
+  border-top-color: #49cc90;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 16px auto 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== Error Banner ===== */
+.error-banner {
+  background: #fff0f0;
+  border: 1px solid #f5c6cb;
+  border-left: 4px solid #f93e3e;
+  color: #842029;
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+/* ===== Schema Viewer ===== */
+.schema-viewer {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.schema-header {
+  background: #1b1b1b;
+  color: white;
+  padding: 24px 28px;
+}
+
+.schema-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.schema-title {
+  margin: 0;
+  font-size: 1.6rem;
+  color: #49cc90;
+}
+
+.schema-version {
+  background: rgba(73, 204, 144, 0.2);
+  color: #49cc90;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.schema-description {
+  color: #ccc;
+  margin: 0 0 16px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.schema-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.meta-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #888;
+}
+
+.meta-value {
+  font-size: 0.85rem;
+  color: #ddd;
+  font-family: 'SF Mono', Consolas, Monaco, monospace;
+}
+
+/* ===== Schema Tree ===== */
+.schema-tree { padding: 8px 0; }
+
+/* ===== Schema Node ===== */
+.schema-node { border-bottom: 1px solid #f0f0f0; }
+.schema-node:last-child { border-bottom: none; }
+
+.node-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  transition: background 0.15s;
+  border-left: 3px solid transparent;
+}
+
+.node-header.expandable { cursor: pointer; }
+
+.node-header.expandable:hover {
+  background: var(--node-bg, rgba(0, 0, 0, 0.02));
+  border-left-color: var(--node-color, #999);
+}
+
+.node-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.node-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.expand-icon {
+  font-size: 0.6rem;
+  transition: transform 0.2s;
+  color: #999;
+  flex-shrink: 0;
+  width: 12px;
+}
+
+.expand-icon.expanded { transform: rotate(90deg); }
+
+.node-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+  min-width: 60px;
+  text-align: center;
+}
+
+.node-name {
+  font-weight: 600;
+  color: #3b4151;
+  font-size: 0.95rem;
+  font-family: 'SF Mono', Consolas, Monaco, monospace;
+}
+
+/* ===== Type Info ===== */
+.type-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: #666;
+}
+
+.type-name {
+  background: #f0f0f0;
+  padding: 1px 8px;
+  border-radius: 3px;
+  font-family: 'SF Mono', Consolas, Monaco, monospace;
+  font-size: 0.78rem;
+  color: #555;
+}
+
+.type-detail {
+  color: #888;
+  font-size: 0.78rem;
+  font-family: 'SF Mono', Consolas, Monaco, monospace;
+}
+
+.type-constraint {
+  color: #999;
+  font-size: 0.75rem;
+  font-style: italic;
+}
+
+/* ===== Tags ===== */
+.tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.tag-required {
+  background: #fff0f0;
+  color: #f93e3e;
+  border: 1px solid #f5c6cb;
+}
+
+.tag-readonly {
+  background: #fff8e1;
+  color: #f57c00;
+  border: 1px solid #ffe0b2;
+}
+
+.tag-config {
+  background: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #c8e6c9;
+}
+
+.tag-key {
+  background: #e3f2fd;
+  color: #1565c0;
+  border: 1px solid #bbdefb;
+  font-family: 'SF Mono', Consolas, Monaco, monospace;
+}
+
+.tag-default {
+  background: #f3e5f5;
+  color: #7b1fa2;
+  border: 1px solid #e1bee7;
+  font-family: 'SF Mono', Consolas, Monaco, monospace;
+}
+
+/* ===== Node Details ===== */
+.node-details { padding: 0 20px 8px 48px; }
+
+.node-description {
+  color: #666;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin: 4px 0 8px;
+}
+
+.node-path {
+  font-size: 0.78rem;
+  color: #999;
+  margin-top: 4px;
+}
+
+.node-path code {
+  background: #f5f5f5;
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.path-label { font-weight: 600; }
+
+/* ===== Enum Table ===== */
+.enum-table { margin: 8px 0; }
+
+.enum-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.enum-table th {
+  text-align: left;
+  padding: 6px 12px;
+  background: #f8f8f8;
+  color: #666;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #eee;
+}
+
+.enum-table td {
+  padding: 5px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  color: #555;
+}
+
+.enum-table code {
+  background: #f0f0f0;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.8rem;
+}
+
+/* ===== Node Children ===== */
+.node-children {
+  padding-left: 20px;
+  border-left: 1px solid #f0f0f0;
+  margin-left: 20px;
+}

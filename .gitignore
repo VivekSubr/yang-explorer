@@ -1,0 +1,19 @@
+# Dependencies
+frontend/node_modules/
+
+# Build artifacts
+backend/yang-explorer.exe
+backend/go.sum
+backend/frontend-dist/
+backend/tmp/
+frontend/dist/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

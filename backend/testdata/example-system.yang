@@ -1,0 +1,238 @@
+module example-system {
+    namespace "http://example.com/system";
+    prefix sys;
+
+    organization "Example Corp";
+    contact "support@example.com";
+    description
+        "This module contains a collection of YANG definitions
+         for configuring example systems.";
+
+    revision 2024-01-15 {
+        description "Initial revision.";
+    }
+
+    typedef host {
+        type union {
+            type string {
+                pattern '([a-zA-Z0-9\-]+\.)+[a-zA-Z]{2,}';
+            }
+            type string {
+                pattern '((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)';
+            }
+        }
+        description "A hostname or IPv4 address.";
+    }
+
+    container system {
+        description "Main system configuration.";
+        config true;
+
+        leaf hostname {
+            type string {
+                length "1..253";
+            }
+            mandatory true;
+            description "The hostname of the system.";
+        }
+
+        leaf domain-name {
+            type string;
+            description "The domain name of the system.";
+        }
+
+        container dns {
+            description "DNS resolver configuration.";
+
+            leaf-list search {
+                type string;
+                description "DNS search domains.";
+            }
+
+            list server {
+                key "address";
+                description "DNS server list.";
+
+                leaf address {
+                    type string;
+                    description "DNS server address.";
+                }
+
+                leaf port {
+                    type uint16 {
+                        range "1..65535";
+                    }
+                    default "53";
+                    description "DNS server port.";
+                }
+            }
+        }
+
+        container ntp {
+            description "NTP configuration.";
+
+            leaf enabled {
+                type boolean;
+                default "true";
+                description "Enable or disable NTP.";
+            }
+
+            list server {
+                key "name";
+                description "NTP server list.";
+
+                leaf name {
+                    type host;
+                    description "NTP server hostname or IP.";
+                }
+
+                leaf prefer {
+                    type empty;
+                    description "Prefer this server.";
+                }
+
+                leaf iburst {
+                    type boolean;
+                    default "false";
+                    description "Send burst on initial sync.";
+                }
+            }
+        }
+
+        container logging {
+            description "Logging configuration.";
+
+            leaf console {
+                type enumeration {
+                    enum emergency {
+                        value 0;
+                        description "System is unusable.";
+                    }
+                    enum alert {
+                        value 1;
+                        description "Immediate action needed.";
+                    }
+                    enum critical {
+                        value 2;
+                        description "Critical conditions.";
+                    }
+                    enum error {
+                        value 3;
+                        description "Error conditions.";
+                    }
+                    enum warning {
+                        value 4;
+                        description "Warning conditions.";
+                    }
+                    enum notice {
+                        value 5;
+                        description "Normal but significant.";
+                    }
+                    enum info {
+                        value 6;
+                        description "Informational messages.";
+                    }
+                    enum debug {
+                        value 7;
+                        description "Debug-level messages.";
+                    }
+                }
+                default "info";
+                description "Console logging level.";
+            }
+
+            list remote-server {
+                key "host";
+                description "Remote syslog server.";
+
+                leaf host {
+                    type host;
+                    description "Syslog server address.";
+                }
+
+                leaf port {
+                    type uint16 {
+                        range "1..65535";
+                    }
+                    default "514";
+                    description "Syslog server port.";
+                }
+
+                leaf protocol {
+                    type enumeration {
+                        enum udp;
+                        enum tcp;
+                        enum tls;
+                    }
+                    default "udp";
+                    description "Transport protocol.";
+                }
+            }
+        }
+    }
+
+    container interfaces {
+        description "Network interface configuration.";
+
+        list interface {
+            key "name";
+            description "List of network interfaces.";
+
+            leaf name {
+                type string;
+                description "Interface name.";
+            }
+
+            leaf description {
+                type string;
+                description "Textual description of the interface.";
+            }
+
+            leaf type {
+                type enumeration {
+                    enum ethernet;
+                    enum loopback;
+                    enum vlan;
+                    enum tunnel;
+                }
+                mandatory true;
+                description "Interface type.";
+            }
+
+            leaf enabled {
+                type boolean;
+                default "true";
+                description "Administrative status.";
+            }
+
+            leaf mtu {
+                type uint16 {
+                    range "68..9216";
+                }
+                description "Maximum transmission unit.";
+            }
+
+            container ipv4 {
+                description "IPv4 configuration.";
+
+                list address {
+                    key "ip";
+                    description "IPv4 addresses.";
+
+                    leaf ip {
+                        type string;
+                        description "IPv4 address.";
+                    }
+
+                    leaf prefix-length {
+                        type uint8 {
+                            range "0..32";
+                        }
+                        mandatory true;
+                        description "Subnet prefix length.";
+                    }
+                }
+            }
+        }
+    }
+}
