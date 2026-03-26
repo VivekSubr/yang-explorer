@@ -126,7 +126,8 @@ const server = http.createServer((req, res) => {
     res.end('{"status":"ok"}'); return;
   }
 
-  if (req.url === '/api/yang/parse' && req.method === 'POST') {
+  if ((req.url === '/api/yang/parse' || req.url === '/api/yang/sonic-compliance') && req.method === 'POST') {
+    const isCompliance = req.url === '/api/yang/sonic-compliance';
     const chunks = [];
     req.on('data', c => chunks.push(c));
     req.on('end', () => {
@@ -159,8 +160,14 @@ const server = http.createServer((req, res) => {
 
       try {
         const schema = parseYang(yangContent, filename);
-        res.writeHead(200, {'Content-Type':'application/json'});
-        res.end(JSON.stringify(schema));
+        if (isCompliance) {
+          const result = checkSonicCompliance(schema);
+          res.writeHead(200, {'Content-Type':'application/json'});
+          res.end(JSON.stringify(result));
+        } else {
+          res.writeHead(200, {'Content-Type':'application/json'});
+          res.end(JSON.stringify(schema));
+        }
       } catch(e) {
         res.writeHead(422, {'Content-Type':'application/json'});
         res.end(JSON.stringify({error:'Parse error: ' + e.message}));
@@ -172,6 +179,89 @@ const server = http.createServer((req, res) => {
   res.writeHead(404, {'Content-Type':'application/json'});
   res.end('{"error":"Not found"}');
 });
+
+function checkSonicCompliance(schema) {
+  const checks = [];
+  const mod = schema.module || '';
+
+  // Module naming
+  checks.push({
+    rule: 'module-lowercase', category: 'naming',
+    status: mod === mod.toLowerCase() ? 'pass' : 'fail',
+    message: mod === mod.toLowerCase() ? 'Module name is lowercase' : `Module name '${mod}' should be lowercase`,
+  });
+  checks.push({
+    rule: 'module-hyphen-separator', category: 'naming',
+    status: mod.includes('_') ? 'fail' : 'pass',
+    message: mod.includes('_') ? 'Module name should use hyphens, not underscores' : 'Module name uses hyphens as separators',
+  });
+  checks.push({
+    rule: 'sonic-prefix', category: 'naming',
+    status: mod.startsWith('sonic-') ? 'pass' : 'warning',
+    message: mod.startsWith('sonic-') ? "Module has 'sonic-' prefix" : `Module '${mod}' does not have 'sonic-' prefix`,
+  });
+
+  // Metadata
+  const metaChecks = [
+    { field: 'namespace', rule: 'namespace-present' },
+    { field: 'prefix', rule: 'prefix-present' },
+    { field: 'revision', rule: 'revision-present' },
+  ];
+  for (const mc of metaChecks) {
+    checks.push({
+      rule: mc.rule, category: 'metadata',
+      status: schema[mc.field] ? 'pass' : 'fail',
+      message: schema[mc.field] ? `${mc.field} defined: ${schema[mc.field]}` : `Module must have a ${mc.field}`,
+    });
+  }
+  checks.push({
+    rule: 'description-present', category: 'metadata',
+    status: schema.description ? 'pass' : 'warning',
+    message: schema.description ? 'Module has a description' : 'Module should have a description',
+  });
+
+  // Node checks
+  function checkNodes(nodes, parentPath) {
+    for (const node of (nodes || [])) {
+      const path = parentPath + '/' + node.name;
+      if (node.kind === 'list' && !node.key) {
+        checks.push({ rule: 'list-has-key', category: 'structure', status: 'fail', message: `List '${node.name}' must define a key`, path });
+      } else if (node.kind === 'list') {
+        checks.push({ rule: 'list-has-key', category: 'structure', status: 'pass', message: `List '${node.name}' has key: ${node.key}`, path });
+      }
+      if (node.name !== node.name.toLowerCase()) {
+        checks.push({ rule: 'node-lowercase', category: 'naming', status: 'fail', message: `Node name '${node.name}' should be lowercase`, path });
+      }
+      if (parentPath === '' && node.kind === 'container') {
+        const hasList = (node.children || []).some(c => c.kind === 'list');
+        checks.push({
+          rule: 'container-has-list', category: 'sonic-extension',
+          status: hasList ? 'pass' : 'warning',
+          message: hasList ? `Container '${node.name}' has list children` : `Container '${node.name}' has no list children`, path,
+        });
+        checks.push({
+          rule: 'top-container-configurable', category: 'sonic-extension',
+          status: node.config === false ? 'warning' : 'pass',
+          message: node.config === false ? `Container '${node.name}' is read-only` : `Container '${node.name}' is configurable`, path,
+        });
+      }
+      checkNodes(node.children, path);
+    }
+  }
+  checkNodes(schema.children, '');
+
+  const passed = checks.filter(c => c.status === 'pass').length;
+  const total = checks.length;
+  const score = total > 0 ? Math.round((passed * 100) / total) : 0;
+  const hasFail = checks.some(c => c.status === 'fail');
+  const compliant = score >= 70 && !hasFail;
+
+  return {
+    compliant, score,
+    summary: `${passed}/${total} checks passed (score: ${score}%) — ${compliant ? 'SONiC compliant' : 'not SONiC compliant'}`,
+    checks,
+  };
+}
 
 server.listen(PORT, () => {
   console.log(`Dev YANG Explorer API on http://localhost:${PORT}`);

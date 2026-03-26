@@ -1,3 +1,18 @@
+export interface ComplianceCheck {
+  rule: string;
+  category: string; // naming, structure, types, metadata, sonic-extension
+  status: string;   // pass, fail, warning
+  message: string;
+  path?: string;
+}
+
+export interface ComplianceResult {
+  compliant: boolean;
+  score: number;
+  summary: string;
+  checks: ComplianceCheck[];
+}
+
 export interface YangType {
   name: string;
   base?: string;
