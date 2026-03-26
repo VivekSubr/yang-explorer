@@ -24,6 +24,7 @@ func TestRunServer(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/yang/parse", handlers.ParseYangHandler)
 	mux.HandleFunc("/api/yang/sonic-compliance", handlers.SonicComplianceHandler)
+	mux.HandleFunc("/api/yang/sonic-lint", handlers.SonicLintHandler)
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status":"ok"}`))

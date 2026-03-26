@@ -513,6 +513,170 @@
   color: white;
 }
 
+/* ===== Lint Panel ===== */
+.lint-panel {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+
+.lint-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.lint-header.has-errors {
+  background: linear-gradient(135deg, #fff5f5, #fff);
+}
+
+.lint-header.clean {
+  background: linear-gradient(135deg, #f0fff4, #fff);
+}
+
+.lint-stats {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.lint-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.lint-stat:hover { background: rgba(0,0,0,0.05); }
+
+.lint-stat-count {
+  font-size: 1.75rem;
+  font-weight: 700;
+}
+
+.lint-stat-error .lint-stat-count { color: #e53e3e; }
+.lint-stat-warning .lint-stat-count { color: #d69e2e; }
+.lint-stat-info .lint-stat-count { color: #3182ce; }
+
+.lint-stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: #718096;
+  font-weight: 600;
+}
+
+.lint-summary p {
+  color: #4a5568;
+  font-size: 0.95rem;
+}
+
+.lint-guidelines-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #3182ce;
+  text-decoration: none;
+}
+
+.lint-guidelines-link:hover { text-decoration: underline; }
+
+.lint-empty {
+  text-align: center;
+  padding: 3rem;
+  color: #718096;
+}
+
+.lint-empty-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.lint-issues {
+  padding: 1rem;
+}
+
+.lint-guideline-group {
+  margin-bottom: 1.5rem;
+}
+
+.lint-guideline-title {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: #718096;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid #edf2f7;
+  font-weight: 600;
+}
+
+.lint-issue {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 6px;
+  border-left: 3px solid transparent;
+}
+
+.lint-issue.lint-error {
+  background: #fff5f5;
+  border-left-color: #e53e3e;
+}
+
+.lint-issue.lint-warning {
+  background: #fffff0;
+  border-left-color: #d69e2e;
+}
+
+.lint-issue.lint-info {
+  background: #ebf8ff;
+  border-left-color: #3182ce;
+}
+
+.lint-issue-icon { font-size: 1rem; flex-shrink: 0; margin-top: 2px; }
+
+.lint-issue-content { flex: 1; min-width: 0; }
+
+.lint-issue-message {
+  font-size: 0.9rem;
+  color: #2d3748;
+  margin-bottom: 0.25rem;
+}
+
+.lint-issue-path {
+  display: inline-block;
+  font-size: 0.8rem;
+  background: #edf2f7;
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: #4a5568;
+  margin-bottom: 0.25rem;
+}
+
+.lint-issue-suggestion {
+  font-size: 0.8rem;
+  color: #718096;
+  margin-top: 0.25rem;
+}
+
+.lint-severity-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.severity-error { background: #fed7d7; color: #c53030; }
+.severity-warning { background: #fefcbf; color: #b7791f; }
+.severity-info { background: #bee3f8; color: #2b6cb0; }
+
 .compliance-summary h3 {
   color: white;
   font-size: 1.2rem;

@@ -108,6 +108,54 @@ result := parser.CheckSonicCompliance(schema)
 writeJSON(w, http.StatusOK, result)
 }
 
+// SonicLintHandler lints a YANG file against SONiC YANG Model Guidelines
+func SonicLintHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	r.ParseMultipartForm(10 << 20)
+
+	file, header, err := r.FormFile("yangFile")
+	if err != nil {
+		body, readErr := io.ReadAll(r.Body)
+		if readErr != nil || len(body) == 0 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{
+				"error": "No YANG file provided.",
+			})
+			return
+		}
+
+		filename := r.Header.Get("X-Filename")
+		if filename == "" {
+			filename = "input.yang"
+		}
+
+		schema, parseErr := parser.ParseYangContent(string(body), filename)
+		if parseErr != nil {
+			writeJSON(w, http.StatusUnprocessableEntity, map[string]string{
+				"error": fmt.Sprintf("Failed to parse YANG: %v", parseErr),
+			})
+			return
+		}
+
+		lintResult := parser.LintSonicYang(schema)
+		writeJSON(w, http.StatusOK, lintResult)
+		return
+	}
+	defer file.Close()
+
+	schema, err := parseUploadedFile(file, header)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+
+	lintResult := parser.LintSonicYang(schema)
+	writeJSON(w, http.StatusOK, lintResult)
+}
+
 func parseUploadedFile(file io.Reader, header *multipart.FileHeader) (*models.YangSchema, error) {
 if !strings.HasSuffix(header.Filename, ".yang") {
 return nil, fmt.Errorf("file must have .yang extension")

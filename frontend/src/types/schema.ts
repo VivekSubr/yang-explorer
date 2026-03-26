@@ -1,3 +1,18 @@
+export interface LintIssue {
+  rule: string;
+  guideline: number;
+  severity: string; // error, warning, info
+  message: string;
+  path?: string;
+  suggestion?: string;
+}
+
+export interface LintResult {
+  score: number;
+  summary: string;
+  issues: LintIssue[];
+}
+
 export interface ComplianceCheck {
   rule: string;
   category: string; // naming, structure, types, metadata, sonic-extension

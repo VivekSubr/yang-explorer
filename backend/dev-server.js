@@ -126,8 +126,9 @@ const server = http.createServer((req, res) => {
     res.end('{"status":"ok"}'); return;
   }
 
-  if ((req.url === '/api/yang/parse' || req.url === '/api/yang/sonic-compliance') && req.method === 'POST') {
+  if ((req.url === '/api/yang/parse' || req.url === '/api/yang/sonic-compliance' || req.url === '/api/yang/sonic-lint') && req.method === 'POST') {
     const isCompliance = req.url === '/api/yang/sonic-compliance';
+    const isLint = req.url === '/api/yang/sonic-lint';
     const chunks = [];
     req.on('data', c => chunks.push(c));
     req.on('end', () => {
@@ -164,6 +165,10 @@ const server = http.createServer((req, res) => {
           const result = checkSonicCompliance(schema);
           res.writeHead(200, {'Content-Type':'application/json'});
           res.end(JSON.stringify(result));
+        } else if (isLint) {
+          const result = lintSonicYang(schema, yangContent);
+          res.writeHead(200, {'Content-Type':'application/json'});
+          res.end(JSON.stringify(result));
         } else {
           res.writeHead(200, {'Content-Type':'application/json'});
           res.end(JSON.stringify(schema));
@@ -179,6 +184,129 @@ const server = http.createServer((req, res) => {
   res.writeHead(404, {'Content-Type':'application/json'});
   res.end('{"error":"Not found"}');
 });
+
+function lintSonicYang(schema, rawContent) {
+  const issues = [];
+  const mod = schema.module || '';
+
+  // G1: Module naming — must start with sonic- prefix
+  if (!mod.startsWith('sonic-')) {
+    issues.push({ rule: 'sonic-module-prefix', guideline: 1, severity: 'error',
+      message: `Module name '${mod}' must use 'sonic-' prefix`,
+      suggestion: `Rename to 'sonic-${mod}'` });
+  }
+  if (mod !== mod.toLowerCase()) {
+    issues.push({ rule: 'module-lowercase', guideline: 1, severity: 'error',
+      message: `Module name '${mod}' must be lowercase`,
+      suggestion: `Rename to '${mod.toLowerCase()}'` });
+  }
+  if (mod.includes('_')) {
+    issues.push({ rule: 'module-no-underscore', guideline: 1, severity: 'error',
+      message: `Module name '${mod}' should use hyphens, not underscores`,
+      suggestion: `Rename to '${mod.replace(/_/g, '-')}'` });
+  }
+
+  // G2: Top-level container must match module name
+  const topContainers = (schema.children || []).filter(c => c.kind === 'container');
+  if (topContainers.length === 0) {
+    issues.push({ rule: 'top-container-required', guideline: 2, severity: 'error',
+      message: 'SONiC YANG modules must have a top-level container',
+      suggestion: `Add 'container ${mod} { ... }'` });
+  } else {
+    for (const tc of topContainers) {
+      if (tc.name !== mod) {
+        issues.push({ rule: 'top-container-name', guideline: 2, severity: 'warning',
+          message: `Top-level container '${tc.name}' should match module name '${mod}'`,
+          path: tc.path,
+          suggestion: `Rename container to '${mod}'` });
+      }
+    }
+  }
+
+  // G3: Namespace format
+  const ns = schema.namespace || '';
+  if (ns && !ns.startsWith('http://github.com/sonic-net/')) {
+    issues.push({ rule: 'namespace-format', guideline: 3, severity: 'warning',
+      message: `Namespace '${ns}' should start with 'http://github.com/sonic-net/'`,
+      suggestion: `Use 'http://github.com/sonic-net/sonic-${mod}'` });
+  }
+  if (!ns) {
+    issues.push({ rule: 'namespace-required', guideline: 3, severity: 'error',
+      message: 'Module must define a namespace' });
+  }
+
+  // G4: Revision
+  if (!schema.revision) {
+    issues.push({ rule: 'revision-required', guideline: 4, severity: 'error',
+      message: 'Module must have at least one revision statement',
+      suggestion: 'Add revision YYYY-MM-DD { description "Initial revision"; }' });
+  }
+
+  // G5/G17: Table containers must have _LIST suffix list
+  function checkTableStructure(nodes, parentPath) {
+    for (const node of (nodes || [])) {
+      const path = parentPath + '/' + node.name;
+      if (node.kind === 'container') {
+        const childLists = (node.children || []).filter(c => c.kind === 'list');
+        if (childLists.length > 0) {
+          for (const list of childLists) {
+            const expected = node.name + '_LIST';
+            if (list.name !== expected) {
+              issues.push({ rule: 'list-name-suffix', guideline: 5, severity: 'warning',
+                message: `List '${list.name}' inside container '${node.name}' should be named '${expected}'`,
+                path: path + '/' + list.name,
+                suggestion: `Rename list to '${expected}'` });
+            }
+          }
+        }
+      }
+      // G9: List keys
+      if (node.kind === 'list' && !node.key) {
+        issues.push({ rule: 'list-key-required', guideline: 9, severity: 'error',
+          message: `List '${node.name}' must define a key`,
+          path });
+      }
+      checkTableStructure(node.children, path);
+    }
+  }
+  checkTableStructure(schema.children, '');
+
+  // G14: Error messages on constraints (check raw content)
+  const mustPatterns = rawContent.match(/must\s+"[^"]+"\s*\{/g) || [];
+  for (const mp of mustPatterns) {
+    if (!rawContent.includes('error-message')) {
+      issues.push({ rule: 'must-error-message', guideline: 14, severity: 'info',
+        message: 'must constraints should include error-message statements',
+        suggestion: 'Add error-message "..." inside must constraint blocks' });
+      break;
+    }
+  }
+
+  // G16: Comments on constraints
+  const patternRe = /pattern\s+"([^"]+)"/g;
+  let pm;
+  while ((pm = patternRe.exec(rawContent)) !== null) {
+    const lineIdx = rawContent.substring(0, pm.index).split('\n').length;
+    const prevLines = rawContent.split('\n').slice(Math.max(0, lineIdx - 3), lineIdx);
+    const hasComment = prevLines.some(l => l.includes('//') || l.includes('/*'));
+    if (!hasComment) {
+      issues.push({ rule: 'pattern-comment', guideline: 16, severity: 'info',
+        message: `Pattern '${pm[1].substring(0, 30)}...' should have a comment explaining its purpose`,
+        suggestion: 'Add a comment above the pattern explaining what it validates' });
+    }
+  }
+
+  // Calculate score
+  const total = issues.length > 0 ? issues.length : 1;
+  const errorCount = issues.filter(i => i.severity === 'error').length;
+  const warnCount = issues.filter(i => i.severity === 'warning').length;
+  const score = Math.max(0, Math.round(100 - (errorCount * 10 + warnCount * 5 + (issues.length - errorCount - warnCount) * 2)));
+  const summary = issues.length === 0
+    ? 'No linting issues found — module follows SONiC YANG guidelines'
+    : `Found ${issues.length} issue(s): ${errorCount} error(s), ${warnCount} warning(s), ${issues.length - errorCount - warnCount} info`;
+
+  return { score, summary, issues };
+}
 
 function checkSonicCompliance(schema) {
   const checks = [];

@@ -20,6 +20,7 @@ func main() {
 	// API routes
 	mux.HandleFunc("/api/yang/parse", handlers.ParseYangHandler)
 	mux.HandleFunc("/api/yang/sonic-compliance", handlers.SonicComplianceHandler)
+	mux.HandleFunc("/api/yang/sonic-lint", handlers.SonicLintHandler)
 
 	// Health check
 	mux.HandleFunc("/api/health", func(w http.ResponseWriter, r *http.Request) {
