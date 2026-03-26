@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "yang-explorer": {
+      "command": "node",
+      "args": ["backend/mcp-server.js"],
+      "cwd": "."
+    }
+  }
+}

@@ -9,22 +9,26 @@ Upload a `.yang` file and explore its schema in a Swagger-like UI — with colla
 ```
 ├── backend/
 │   ├── main.go              # HTTP server entry point
-│   ├── handlers/             # API handlers (upload, parse, CORS)
-│   ├── parser/               # YANG parser using goyang
-│   ├── models/               # Schema data models
+│   ├── handlers/             # API handlers (parse, compliance, lint)
+│   ├── parser/               # YANG parser, SONiC compliance & linter
+│   ├── models/               # Schema, compliance, lint data models
 │   ├── testdata/             # Sample YANG files
 │   ├── dev-server.js         # Node.js dev fallback server
+│   ├── mcp-server.js         # MCP server (stdio transport)
 │   └── main_test.go          # Test-based server runner
 ├── frontend/
 │   ├── src/
 │   │   ├── App.tsx           # Main app with upload + viewer
 │   │   ├── components/
-│   │   │   ├── FileUpload.tsx    # Drag-and-drop file upload
-│   │   │   ├── SchemaViewer.tsx  # Module header + tree root
-│   │   │   └── SchemaNode.tsx    # Recursive schema node renderer
+│   │   │   ├── FileUpload.tsx      # Drag-and-drop file upload
+│   │   │   ├── SchemaViewer.tsx    # Module header + tree root
+│   │   │   ├── SchemaNode.tsx      # Recursive schema node renderer
+│   │   │   ├── CompliancePanel.tsx # SONiC compliance results
+│   │   │   └── LintPanel.tsx       # SONiC linter results
 │   │   └── types/
-│   │       └── schema.ts        # TypeScript type definitions
+│   │       └── schema.ts          # TypeScript type definitions
 │   └── vite.config.ts        # Vite config with API proxy
+├── mcp.json                  # MCP server configuration
 ```
 
 ## Quick Start
@@ -71,5 +75,46 @@ make clean           # Removes node_modules, go.sum, build artifacts
 ### `POST /api/yang/parse`
 Upload a YANG file (multipart form, field: `yangFile`) and receive the parsed schema as JSON.
 
+### `POST /api/yang/sonic-compliance`
+Upload a YANG file and check SONiC compliance. Returns score, pass/fail checks by category.
+
+### `POST /api/yang/sonic-lint`
+Upload a YANG file and lint it against [SONiC YANG Model Guidelines](https://github.com/sonic-net/SONiC/blob/master/doc/mgmt/SONiC_YANG_Model_Guidelines.md). Returns issues with severity, guideline numbers, and suggestions.
+
 ### `GET /api/health`
 Returns `{"status":"ok"}`.
+
+## MCP Server
+
+The backend APIs are also available as an [MCP](https://modelcontextprotocol.io) server for AI assistant integration (Claude Desktop, Cursor, VS Code, etc.).
+
+### Tools
+
+| Tool | Description |
+|------|-------------|
+| `parse_yang` | Parse YANG content into a structured schema tree |
+| `check_sonic_compliance` | Check SONiC compliance (score, pass/fail checks) |
+| `lint_sonic_yang` | Lint against SONiC YANG guidelines (issues + suggestions) |
+
+### Configuration
+
+Add to your MCP client config (e.g. Claude Desktop `claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "yang-explorer": {
+      "command": "node",
+      "args": ["/absolute/path/to/backend/mcp-server.js"]
+    }
+  }
+}
+```
+
+### Run standalone
+
+```bash
+node backend/mcp-server.js
+```
+
+The server communicates via stdio using JSON-RPC (MCP protocol).

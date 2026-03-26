@@ -1,4 +1,5 @@
 // Dev-only YANG parser server. Usage: node dev-server.js
+// Core functions are also used by mcp-server.js
 const http = require('http');
 const PORT = 8080;
 
@@ -391,7 +392,13 @@ function checkSonicCompliance(schema) {
   };
 }
 
-server.listen(PORT, () => {
-  console.log(`Dev YANG Explorer API on http://localhost:${PORT}`);
-  console.log('Note: This is a simplified parser. Use the Go backend for full YANG support.');
-});
+// Only start server when run directly (not when required as module)
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`Dev YANG Explorer API on http://localhost:${PORT}`);
+    console.log('Note: This is a simplified parser. Use the Go backend for full YANG support.');
+  });
+}
+
+// Export core functions for MCP server
+module.exports = { parseYang, checkSonicCompliance, lintSonicYang };
