@@ -1,4 +1,4 @@
-.PHONY: install install-backend install-frontend build build-backend build-frontend dev dev-backend dev-frontend dev-mock clean
+.PHONY: install install-backend install-frontend build build-backend build-frontend dev dev-backend dev-frontend dev-mock test test-backend test-frontend lint lint-backend lint-frontend clean
 
 # ===== Install dependencies =====
 install: install-backend install-frontend
@@ -19,6 +19,24 @@ build-frontend: install-frontend
 	cd frontend && npm run build
 	-rd /s /q backend\frontend-dist 2>nul
 	xcopy /e /i /q frontend\dist backend\frontend-dist
+
+# ===== Test =====
+test: test-backend test-frontend
+
+test-backend:
+	cd backend && go test ./...
+
+test-frontend: install-frontend
+	cd frontend && npm test
+
+# ===== Lint =====
+lint: lint-backend lint-frontend
+
+lint-backend:
+	cd backend && go vet ./...
+
+lint-frontend: install-frontend
+	cd frontend && npm run lint
 
 # ===== Development =====
 dev-backend: install-backend

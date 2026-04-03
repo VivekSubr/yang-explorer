@@ -1,10 +1,42 @@
 import { useState, useCallback } from 'react';
 import type { YangSchema, ComplianceResult, LintResult } from './types/schema';
 import FileUpload from './components/FileUpload';
+import type { YangInput } from './components/FileUpload';
 import SchemaViewer from './components/SchemaViewer';
 import CompliancePanel from './components/CompliancePanel';
 import LintPanel from './components/LintPanel';
 import './App.css';
+
+function buildRequestOptions(input: YangInput): { body: BodyInit; headers?: Record<string, string> } {
+  switch (input.type) {
+    case 'file': {
+      const fd = new FormData();
+      fd.append('yangFile', input.file);
+      return { body: fd };
+    }
+    case 'content':
+      return {
+        body: JSON.stringify({ content: input.content, filename: input.filename }),
+        headers: { 'Content-Type': 'application/json' },
+      };
+    case 'filepath':
+      return {
+        body: JSON.stringify({ filepath: input.filepath }),
+        headers: { 'Content-Type': 'application/json' },
+      };
+  }
+}
+
+function inputLabel(input: YangInput): string {
+  switch (input.type) {
+    case 'file':
+      return input.file.name;
+    case 'content':
+      return input.filename || 'pasted content';
+    case 'filepath':
+      return input.filepath;
+  }
+}
 
 function App() {
   const [schema, setSchema] = useState<YangSchema | null>(null);
@@ -13,26 +45,26 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'schema' | 'compliance' | 'lint'>('schema');
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [sourceName, setSourceName] = useState<string | null>(null);
 
-  const handleUpload = useCallback(async (file: File) => {
+  const handleUpload = useCallback(async (input: YangInput) => {
     setIsLoading(true);
     setError(null);
     setSchema(null);
     setCompliance(null);
     setLint(null);
-    setUploadedFile(file);
+    setSourceName(inputLabel(input));
 
     try {
-      const formData = new FormData();
-      formData.append('yangFile', file);
-
-      const makeFD = () => { const fd = new FormData(); fd.append('yangFile', file); return fd; };
+      const makeOpts = () => {
+        const opts = buildRequestOptions(input);
+        return { method: 'POST' as const, body: opts.body, headers: opts.headers };
+      };
 
       const [schemaRes, complianceRes, lintRes] = await Promise.all([
-        fetch('/api/yang/parse', { method: 'POST', body: formData }),
-        fetch('/api/yang/sonic-compliance', { method: 'POST', body: makeFD() }),
-        fetch('/api/yang/sonic-lint', { method: 'POST', body: makeFD() }),
+        fetch('/api/yang/parse', makeOpts()),
+        fetch('/api/yang/sonic-compliance', makeOpts()),
+        fetch('/api/yang/sonic-lint', makeOpts()),
       ]);
 
       const schemaData = await schemaRes.json();
@@ -90,6 +122,11 @@ function App() {
 
         {schema && (
           <>
+            {sourceName && (
+              <div className="source-banner">
+                <span className="source-label">Source:</span> <code>{sourceName}</code>
+              </div>
+            )}
             <div className="tab-bar">
               <button
                 className={`tab ${activeTab === 'schema' ? 'active' : ''}`}
