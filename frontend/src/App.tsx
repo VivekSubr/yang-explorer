@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { YangSchema, ComplianceResult, LintResult } from './types/schema';
 import FileUpload from './components/FileUpload';
 import type { YangInput } from './components/FileUpload';
@@ -89,6 +89,27 @@ function App() {
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  // Listen for backend push via SSE
+  useEffect(() => {
+    const evtSource = new EventSource('/api/yang/events');
+    evtSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.schema) {
+          setSchema(data.schema);
+          setSourceName(data.sourceName || 'pushed');
+          setCompliance(data.compliance || null);
+          setLint(data.lint || null);
+          setError(null);
+          setActiveTab('schema');
+        }
+      } catch {
+        // ignore malformed events
+      }
+    };
+    return () => evtSource.close();
   }, []);
 
   return (

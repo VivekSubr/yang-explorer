@@ -1,7 +1,9 @@
 // Dev-only YANG parser server. Usage: node dev-server.js
 // Core functions are also used by mcp-server.js
 const http = require('http');
+const { exec } = require('child_process');
 const PORT = 8080;
+const FRONTEND_PORT = 5173;
 
 function parseYang(content, filename) {
   const mod = extract(content, /^\s*module\s+([\w-]+)/m) || filename.replace('.yang','');
@@ -116,6 +118,42 @@ function parseBlock(content, parentPath, depth) {
   });
 }
 
+// In-memory store for the latest parsed result
+let latestResult = null;
+// SSE clients for real-time push
+const sseClients = [];
+
+function broadcastResult(result) {
+  const data = `data: ${JSON.stringify(result)}\n\n`;
+  for (const client of sseClients) {
+    client.write(data);
+  }
+}
+
+function openBrowser(url) {
+  const platform = process.platform;
+  const cmd = platform === 'win32' ? 'start' : platform === 'darwin' ? 'open' : 'xdg-open';
+  exec(`${cmd} ${url}`);
+}
+
+// Open browser and push result once a client connects
+function ensureFrontend() {
+  if (sseClients.length > 0) {
+    broadcastResult(latestResult);
+  } else {
+    openBrowser(`http://localhost:${FRONTEND_PORT}`);
+    // Wait for the SSE client to connect, then push
+    const waitForClient = setInterval(() => {
+      if (sseClients.length > 0) {
+        clearInterval(waitForClient);
+        broadcastResult(latestResult);
+      }
+    }, 500);
+    // Give up after 30s
+    setTimeout(() => clearInterval(waitForClient), 30000);
+  }
+}
+
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -125,6 +163,27 @@ const server = http.createServer((req, res) => {
   if (req.url === '/api/health') {
     res.writeHead(200, {'Content-Type':'application/json'});
     res.end('{"status":"ok"}'); return;
+  }
+
+  if (req.url === '/api/yang/latest' && req.method === 'GET') {
+    res.writeHead(200, {'Content-Type':'application/json'});
+    res.end(JSON.stringify(latestResult || {})); return;
+  }
+
+  if (req.url === '/api/yang/events' && req.method === 'GET') {
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+    });
+    res.write('\n');
+    sseClients.push(res);
+    req.on('close', () => {
+      const idx = sseClients.indexOf(res);
+      if (idx >= 0) sseClients.splice(idx, 1);
+    });
+    return;
   }
 
   if ((req.url === '/api/yang/parse' || req.url === '/api/yang/sonic-compliance' || req.url === '/api/yang/sonic-lint') && req.method === 'POST') {
@@ -150,6 +209,24 @@ const server = http.createServer((req, res) => {
             }
           }
         }
+      } else if (ct.includes('application/json')) {
+        try {
+          const json = JSON.parse(body.toString());
+          if (json.filepath) {
+            const path = require('path');
+            const fs = require('fs');
+            const resolved = path.resolve(json.filepath);
+            yangContent = fs.readFileSync(resolved, 'utf-8');
+            filename = path.basename(resolved);
+          } else if (json.content) {
+            yangContent = json.content;
+            filename = json.filename || 'input.yang';
+          }
+        } catch (e) {
+          res.writeHead(400, {'Content-Type':'application/json'});
+          res.end(JSON.stringify({error: 'Invalid JSON: ' + e.message}));
+          return;
+        }
       } else {
         yangContent = body.toString();
         filename = req.headers['x-filename'] || 'input.yang';
@@ -162,18 +239,22 @@ const server = http.createServer((req, res) => {
 
       try {
         const schema = parseYang(yangContent, filename);
+        const compliance = checkSonicCompliance(schema);
+        const lint = lintSonicYang(schema, yangContent);
+        latestResult = { schema, compliance, lint, sourceName: filename };
+
         if (isCompliance) {
-          const result = checkSonicCompliance(schema);
           res.writeHead(200, {'Content-Type':'application/json'});
-          res.end(JSON.stringify(result));
+          res.end(JSON.stringify(compliance));
         } else if (isLint) {
-          const result = lintSonicYang(schema, yangContent);
           res.writeHead(200, {'Content-Type':'application/json'});
-          res.end(JSON.stringify(result));
+          res.end(JSON.stringify(lint));
         } else {
           res.writeHead(200, {'Content-Type':'application/json'});
           res.end(JSON.stringify(schema));
         }
+
+        ensureFrontend();
       } catch(e) {
         res.writeHead(422, {'Content-Type':'application/json'});
         res.end(JSON.stringify({error:'Parse error: ' + e.message}));
