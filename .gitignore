@@ -18,3 +18,7 @@ frontend/dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Go build cache
+.gocache/
+.gotmp/
